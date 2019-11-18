@@ -6,8 +6,9 @@ res:	.space 2
 image:	.space BMP_FILE_SIZE
 width:	.word 0
 height:	.word 0
-padding:.word 0 	
-fname:	.asciiz "01.bmp" #nazwa pliku
+padding:.word 0 
+extra:.word 0	
+fname:	.asciiz "pep.bmp" #nazwa pliku
 count_of_loop:	.word 15 #liczba iteracji ciągu
 
 	.text
@@ -57,6 +58,9 @@ read_bmp:
 	la $t7, image + 22 # height
 	lw $t4, ($t7)
 	sw $t4, height
+	
+	andi $t3, $t3, 3 # $s5 holds number of padding pixels
+	sw $t3,	padding
 # ============================================================================	
 #ustawiamy jednorodny kolor obrazkay	
 loop:					
@@ -66,11 +70,20 @@ loop:
 	jal	put_pixel
 	addi	$s1, $s1, 1
 	lw	$s3, width
+	lw 	$s7,extra
+	li 	$s7, 0
+	sw	$s7, extra
 	ble	$s1, $s3, loop
+	lw 	$s6,padding
+	move 	$s7, $s6
+	sw	$s7, extra
 	addi	$s2, $s2,1
 	li 	$s1, 0
 	lw	$s3, height
 	ble	$s2, $s3, loop
+	
+	
+	
 	
 	jal save_bmp	#zapisujemy kolor
 # ============================================================================	
@@ -79,8 +92,7 @@ loop:
 	li $t1, 0	#y
 	li $t2,	0	#licznik
 	
-	and $t5, $t3, 3 # $s5 holds number of padding pixels
-	sw $t5,	padding
+	
 	
 	lw $s0, count_of_loop
 
@@ -181,9 +193,15 @@ set_color:
 	move 	$t2, $zero
 	addi	$t0, $t0, 1
 	lw	$s6, width
+	lw 	$s7,extra
+	li 	$s7, 0
+	sw	$s7, extra
 	ble	$t0, $s6, set_loop #x<width
+	lw 	$s6,padding
+	move 	$s7, $s6
+	sw	$s7, extra
 	add	$t1, $t1, 1
-	li 	$t0, 0
+	move 	$t0, $zero
 	lw	$s6, height
 	ble	$t1, $s6, set_loop #y<height
 
@@ -259,6 +277,13 @@ put_pixel:
 	#liczmy adres pixela
 	la $t3, image + 18
 	lw $t4, ($t3)
+	lw $s6, extra
+	add $t4, $t4, $s6
+	#bne $a0, $zero, color
+	#beq $a0, $zero, color
+	#lw $s6, padding
+	#add $t2, $t2, $s6 
+#color:
 	add $t3, $t4, $t4
 	add $t4, $t4, $t3
 	mul $t1, $a1, $t4 #w a1 jest zapisana wartsc y 
@@ -267,8 +292,12 @@ put_pixel:
 	add $t3, $t3, $a0	#załadowanie do t3 adresu juz do greena 
 	add $t1, $t1, $t3	#przesuniecie na y
 	add $t2, $t2, $t1	#adres pixela
+	srl $a0, $a0, 1 
+	
+	
 	
 	#ustawiamy nowy kolor
+
 	sb $a2,($t2) 		#odkłądamy niebieski
 	srl $a2,$a2,8
 	sb $a2,1($t2)		#odkłądamy zielony
